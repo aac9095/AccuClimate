@@ -9,7 +9,7 @@ public class Temp {
     private Double max;
     private Double night;
     private Double eve;
-    private Integer morn;
+    private Double morn;
 
     public Double getMin() {
         return min;
@@ -51,11 +51,11 @@ public class Temp {
         this.eve = eve;
     }
 
-    public Integer getMorn() {
+    public Double getMorn() {
         return morn;
     }
 
-    public void setMorn(Integer morn) {
+    public void setMorn(Double morn) {
         this.morn = morn;
     }
 }

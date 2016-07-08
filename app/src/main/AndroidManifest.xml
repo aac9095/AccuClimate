@@ -2,6 +2,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.ayush.sunshine.app">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+
     <application
         android:allowBackup="true"
         android:icon="@drawable/ic_launcher"
@@ -14,6 +16,20 @@
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+        </activity>
+        <activity android:name=".DetailActivity">
+            android:parentActivityName="com.example.ayush.sunshine.app.MainActivity" >
+            <!-- Parent activity meta-data to support 4.0 and lower -->
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.example.ayush.sunshine.app.MainActivity" />
+        </activity>
+        <activity android:name=".SettingsActivity">
+            android:parentActivityName="com.example.ayush.sunshine.app.MainActivity" >
+            <!-- Parent activity meta-data to support 4.0 and lower -->
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value="com.example.ayush.sunshine.app.MainActivity" />
         </activity>
     </application>
 

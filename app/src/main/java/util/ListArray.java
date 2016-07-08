@@ -5,7 +5,7 @@ import java.util.ArrayList;
 /**
  * Created by Ayush on 07-07-2016.
  */
-public class List {
+public class ListArray {
     private Integer dt;
     private Temp temp;
     private Double pressure;

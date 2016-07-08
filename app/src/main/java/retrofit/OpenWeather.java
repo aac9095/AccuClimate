@@ -3,7 +3,7 @@ package retrofit;
 import java.util.ArrayList;
 
 import util.City;
-import util.List;
+import util.ListArray;
 
 /**
  * Created by Ayush on 07-07-2016.
@@ -13,7 +13,7 @@ public class OpenWeather {
     private String cod;
     private Double message;
     private Integer cnt;
-    private java.util.List<List> list = new ArrayList<List>();
+    private java.util.List<ListArray> list = new ArrayList<>();
 
     public City getCity() {
         return city;
@@ -47,12 +47,11 @@ public class OpenWeather {
         this.cnt = cnt;
     }
 
-    public java.util.List<List> getList() {
+    public java.util.List<ListArray> getListArray() {
         return list;
     }
 
-    public void setList(java.util.List<List> list) {
-        this.list = list;
+    public void setListArray(java.util.List<ListArray> listArray) {
+        this.list = listArray;
     }
-
 }

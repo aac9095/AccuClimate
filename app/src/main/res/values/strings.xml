@@ -5,4 +5,26 @@
     <string name="hello_world">Hello world!</string>
     <string name="action_settings">Settings</string>
 
+    <!-- TODO: Remove or change this placeholder text -->
+    <string name="hello_blank_fragment">Hello blank fragment</string>
+    <string name="refresh">Refresh</string>
+
+    <!-- Label for the location preference [CHAR LIMIT=30] -->
+    +
+    <string name="pref_location_label">Location</string>
+    +
+    +    <!-- Key name for storing location in SharedPreferences [CHAR LIMIT=NONE] -->
+    +
+    <string name="pref_location_key" translatable="false">location</string>
+    +
+    +    <!-- Default postal code for location preference [CHAR LIMIT=NONE] -->
+    +
+    <string name="pref_location_default" translatable="false">201301</string>
+    <string name="temperatureUnits">Temperature Units</string>
+    <string name="temperatureUnits_key">temperature units</string>
+    <string name="temperateUnit_default">metric</string>
+    <string name="preferred_location">Preferred Location</string>
+    <string name="share">Share</string>
+    <string name="last_sharing_app">Last Share</string>
+
 </resources>
