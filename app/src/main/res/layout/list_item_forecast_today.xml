@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="horizontal" android:layout_width="match_parent"
+    android:layout_height="200dp">
+
+    <LinearLayout
+        android:layout_weight="0.5"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <TextView
+            android:layout_weight="0.4"
+            android:id="@+id/list_item_date_textview"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:text="Today"/>
+        <TextView
+            android:layout_weight="0.3"
+            android:id="@+id/list_item_high_textview"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:textSize="24sp"
+            android:gravity="center"
+            android:text="88"/>
+        <TextView
+            android:layout_weight="0.3"
+            android:id="@+id/list_item_low_textview"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:gravity="center"
+            android:textSize="24sp"
+            android:text="63"/>
+    </LinearLayout>
+
+    <LinearLayout
+        android:layout_weight="0.5"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical">
+        <ImageView
+        android:layout_weight="0.8"
+        android:id="@+id/list_item_icon"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:gravity="center_vertical"
+        android:src="@drawable/ic_launcher"/>
+
+        <TextView
+            android:layout_weight="0.2"
+            android:id="@+id/list_item_forecast_textview"
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:textSize="24sp"
+            android:gravity="center"
+            android:text="Sunny"/>
+
+    </LinearLayout>
+</LinearLayout>
