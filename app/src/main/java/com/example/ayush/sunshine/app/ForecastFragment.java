@@ -3,15 +3,17 @@ package com.example.ayush.sunshine.app;
 
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
-import android.support.annotation.StringRes;
 import android.support.v4.app.Fragment;
+import android.support.v4.app.LoaderManager;
+import android.support.v4.content.CursorLoader;
+import android.support.v4.content.Loader;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
-import android.text.format.Time;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -21,37 +23,54 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+import com.example.ayush.sunshine.app.data.WeatherContract;
 
-import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 
+import adapter.Utility;
 import adapter.WeatherAdapter;
-import retrofit.OpenWeather;
-import retrofit.OpenWeatherAPI;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
-import retrofit2.Retrofit;
-import retrofit2.converter.gson.GsonConverterFactory;
-
 /**
  * A simple {@link Fragment} subclass.
  */
-public class ForecastFragment extends Fragment implements Callback<OpenWeather> {
+public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
 
+    private static final int FORECAST_LOADER = 0;
+    private final String LOG_TAG = ForecastFragment.class.getSimpleName();
     public View rootView;
     public ArrayList<String> arrayList;
-    private String APPID ;
     private String postal;
-    private String unit;
     private RecyclerView mRecyclerView;
     private LinearLayoutManager mLayoutManager;
     private WeatherAdapter mAdapter;
-    private Gson gson;
-    private Retrofit retrofit;
+    private static final String[] FORECAST_COLUMNS = {
+            // In this case the id needs to be fully qualified with a table name, since
+            // the content provider joins the location & weather tables in the background
+            // (both have an _id column)
+            // On the one hand, that's annoying.  On the other, you can search the weather table
+            // using the location set by the user, which is only in the Location table.
+            // So the convenience is worth it.
+            WeatherContract.WeatherEntry.TABLE_NAME + "." + WeatherContract.WeatherEntry._ID,
+            WeatherContract.WeatherEntry.COLUMN_DATE,
+            WeatherContract.WeatherEntry.COLUMN_SHORT_DESC,
+            WeatherContract.WeatherEntry.COLUMN_MAX_TEMP,
+            WeatherContract.WeatherEntry.COLUMN_MIN_TEMP,
+            WeatherContract.LocationEntry.COLUMN_LOCATION_SETTING,
+            WeatherContract.WeatherEntry.COLUMN_WEATHER_ID,
+            WeatherContract.LocationEntry.COLUMN_COORD_LAT,
+            WeatherContract.LocationEntry.COLUMN_COORD_LONG
+    };
 
+    // These indices are tied to FORECAST_COLUMNS.  If FORECAST_COLUMNS changes, these
+    // must change.
+    public static final int COL_WEATHER_ID = 0;
+    public static final int COL_WEATHER_DATE = 1;
+    static public final int COL_WEATHER_DESC = 2;
+    static public final int COL_WEATHER_MAX_TEMP = 3;
+    static public final int COL_WEATHER_MIN_TEMP = 4;
+    static public final int COL_LOCATION_SETTING = 5;
+    static public final int COL_WEATHER_CONDITION_ID = 6;
+    static public final int COL_COORD_LAT = 7;
+    static public final int COL_COORD_LONG = 8;
     public ForecastFragment() {
     }
 
@@ -64,61 +83,22 @@ public class ForecastFragment extends Fragment implements Callback<OpenWeather> 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
+
         rootView = inflater.inflate(R.layout.fragment_main, container, false);
         arrayList = new ArrayList<String>();
-
-        APPID = getArguments().getString("appID");
-        gson = new GsonBuilder()
-                .setDateFormat("yyyy-MM-dd'T'HH:mm:ssZ")
-                .create();
-        retrofit = new Retrofit.Builder()
-                .baseUrl(OpenWeatherAPI.ENDPOINT)
-                .addConverterFactory(GsonConverterFactory.create(gson))
-                .build();
-
         mRecyclerView = (RecyclerView) rootView.findViewById(R.id.recycler_view_forecast);
-
+        mRecyclerView.setHasFixedSize(true);
+        mLayoutManager = new LinearLayoutManager(getActivity());
+        mRecyclerView.setLayoutManager(mLayoutManager);
+        mAdapter = new WeatherAdapter(getActivity(), null, 0);
         updateWeather();
-
         return rootView;
     }
 
     @Override
-    public void onResponse(Call<OpenWeather> call, Response<OpenWeather> response) {
-        int code = response.code();
-        if (code == 200) {
-            OpenWeather openWeather = response.body();
-            Time dayTime = new Time();
-            dayTime.setToNow();
-
-            // we start at the day returned by local time. Otherwise this is a mess.
-            int julianStartDay = Time.getJulianDay(System.currentTimeMillis(), dayTime.gmtoff);
-
-            // now we work exclusively in UTC
-            dayTime = new Time();
-            arrayList.clear();
-            for(int i=0;i<openWeather.getCnt();i++){
-                long dateTime;
-                String day,weather;
-                // Cheating to convert this to UTC time, which is what we want anyhow
-                dateTime = dayTime.setJulianDay(julianStartDay+i);
-                day = getReadableDateString(dateTime);
-                weather= String.valueOf(day)+" - " + openWeather.getListArray().get(i).getWeather().get(0).getMain()
-                        + " - " + Math.round(openWeather.getListArray().get(i).getTemp().getMax()) + "/"
-                        + Math.round(openWeather.getListArray().get(i).getTemp().getMin());
-                arrayList.add(i,weather);
-            }
-
-            setRecyclerView(arrayList);
-
-        } else {
-            Toast.makeText(getActivity(), "Did not work: " + String.valueOf(code), Toast.LENGTH_LONG).show();
-        }
-    }
-    @Override
-    public void onFailure(Call<OpenWeather> call, Throwable t) {
-        Toast.makeText(getActivity(), "Nope", Toast.LENGTH_LONG).show();
-        Log.e("Throwable ",t.toString());
+    public void onActivityCreated(Bundle savedInstanceState) {
+        getLoaderManager().initLoader(FORECAST_LOADER, null, this);
+        super.onActivityCreated(savedInstanceState);
     }
 
     @Override
@@ -152,48 +132,56 @@ public class ForecastFragment extends Fragment implements Callback<OpenWeather> 
     public void updateWeather(){
 
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        postal = preferences.getString(getString(R.string.pref_location_key),getString(R.string.pref_location_default));
-        unit = preferences.getString(getString(R.string.temperatureUnits_key),getString(R.string.temperateUnit_default));
-
-        // prepare call in Retrofit 2.0
-        OpenWeatherAPI openWeatherAPI = retrofit.create(OpenWeatherAPI.class);
-
-        Call<OpenWeather> call = openWeatherAPI.getAPPID(postal,unit,APPID);
-        //asynchronous call
-        call.enqueue(this);
+        postal = preferences.getString(getString(R.string.pref_location_key)
+                ,getString(R.string.pref_location_default));
+        //Toast.makeText(getActivity(),LOG_TAG+" updatedWeather()",Toast.LENGTH_SHORT).show();
+        FetchWeatherTask fetchWeatherTask = new FetchWeatherTask(getContext());
+        mRecyclerView.setAdapter(mAdapter);
     }
 
-    private String getReadableDateString(long time){
-        // Because the API returns a unix timestamp (measured in seconds),
-        // it must be converted to milliseconds in order to be converted to valid date.
-        SimpleDateFormat shortenedDateFormat = new SimpleDateFormat("EEE MMM dd");
-        return shortenedDateFormat.format(time);
-    }
 
-    private void setRecyclerView(ArrayList<String> arrayList){
-
-            // use this setting to improve performance if you know that changes
-            // in content do not change the layout size of the RecyclerView
-            mRecyclerView.setHasFixedSize(true);
-
-            // use a linear layout manager
-            mLayoutManager = new LinearLayoutManager(getActivity());
-            mRecyclerView.setLayoutManager(mLayoutManager);
-
-            // specify an adapter (see also next example)
-            mAdapter = new WeatherAdapter(arrayList);
-            mRecyclerView.setAdapter(mAdapter);
-    }
-
-    @Override
-    public void onStart() {
-        super.onStart();
-        updateWeather();
-    }
+//    @Override
+//    public void onStart() {
+//        super.onStart();
+//        updateWeather();
+//    }
 
     @Override
     public void onResume() {
         super.onResume();
         updateWeather();
     }
+
+    @Override
+    public Loader<Cursor> onCreateLoader(int i, Bundle bundle) {
+             String locationSetting = Utility.getPreferredLocation(getActivity());
+
+                     // Sort order:  Ascending, by date.
+                             String sortOrder = WeatherContract.WeatherEntry.COLUMN_DATE +  " ASC";
+             Uri weatherForLocationUri = WeatherContract.WeatherEntry.buildWeatherLocationWithStartDate(
+                             locationSetting, System.currentTimeMillis());
+
+                     return new CursorLoader(getActivity(),
+                             weatherForLocationUri,
+                             FORECAST_COLUMNS,
+                             null,
+                             null,
+                             sortOrder);
+         }
+
+             @Override
+     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
+             mAdapter.mCursorAdapter.swapCursor(cursor);
+         }
+
+             @Override
+     public void onLoaderReset(Loader<Cursor> cursorLoader) {
+             mAdapter.mCursorAdapter.swapCursor(null);
+         }
+
+    public void onLocationChanged(){
+        updateWeather();
+        getLoaderManager().restartLoader(FORECAST_LOADER,null,this);
+    }
+
 }

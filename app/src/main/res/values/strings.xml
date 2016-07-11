@@ -20,11 +20,26 @@
     +    <!-- Default postal code for location preference [CHAR LIMIT=NONE] -->
     +
     <string name="pref_location_default" translatable="false">201301</string>
-    <string name="temperatureUnits">Temperature Units</string>
-    <string name="temperatureUnits_key">temperature units</string>
-    <string name="temperateUnit_default">metric</string>
     <string name="preferred_location">Preferred Location</string>
     <string name="share">Share</string>
     <string name="last_sharing_app">Last Share</string>
+
+    <!-- Label for the temperature units preference [CHAR LIMIT=30] -->
+    <string name="pref_units_label">Temperature Units</string>
+
+    <!-- Label for metric option in temperature unit preference [CHAR LIMIT=25] -->
+    <string name="pref_units_label_metric">Metric</string>
+
+    <!-- Label for imperial option in temperature unit preference [CHAR LIMIT=25] -->
+    <string name="pref_units_label_imperial">Imperial</string>
+
+    <!-- Key name for temperature unit preference in SharedPreferences [CHAR LIMIT=NONE] -->
+    <string name="pref_units_key" translatable="false">units</string>
+
+    <!-- Value in SharedPreferences for metric temperature unit option [CHAR LIMIT=NONE] -->
+    <string name="pref_units_metric" translatable="false">metric</string>
+
+    <!-- Value in SharedPreferences for imperial temperature unit option [CHAR LIMIT=NONE] -->
+    <string name="pref_units_imperial" translatable="false">imperial</string>
 
 </resources>

@@ -11,7 +11,7 @@ import retrofit2.http.Query;
 public interface OpenWeatherAPI {
     String ENDPOINT = "http://api.openweathermap.org";
 
-    @GET("/data/2.5/forecast/daily?&mode=json&&cnt=7")
+    @GET("/data/2.5/forecast/daily?&mode=json&&cnt=14")
     Call<OpenWeather> getAPPID(
             @Query("q") String postal,
             @Query("units") String unit,
