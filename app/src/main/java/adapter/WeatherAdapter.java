@@ -30,9 +30,9 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
 
     private static int VIEW_TYPE_TODAY = 0;
     private static int VIEW_TYPE_FUTURE_DAY = 1;
-    private static final int VIEW_TYPE_COUNT = 2;
-    public CursorAdapter mCursorAdapter;
+    private Cursor mCursor;
     private Context mContext;
+    private boolean mTwoPane;
 
     // Provide a reference to the views for each data item
     // Complex data items may need more than one view per item, and
@@ -54,95 +54,61 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
 
 
     // Provide a suitable constructor (depends on the kind of dataset)
-    public WeatherAdapter(Context context, Cursor c,int flags) {
+    public WeatherAdapter(Context context, Cursor c) {
         mContext = context;
-        mCursorAdapter = new CursorAdapter(mContext,c,flags) {
-            @Override
-            public View newView(Context context, Cursor cursor, ViewGroup parent) {
-                if(cursor.getPosition()==-1)
-                    cursor.moveToFirst();
-                int viewType = getItemViewType(cursor.getPosition());
-                int layoutId = -1;
-                if(viewType==VIEW_TYPE_TODAY)
-                    layoutId = R.layout.list_item_forecast_today;
-                else if(viewType==VIEW_TYPE_FUTURE_DAY)
-                    layoutId = R.layout.list_item_forecast;
-                View view = LayoutInflater.from(context).inflate(layoutId, parent, false);
-                return view;
-            }
-
-            @Override
-            public void bindView(View itemView, Context context, final Cursor cursor) {
-                // our view is pretty simple here --- just a text view
-                // we'll keep the UI functional with a simple (and slow!) binding.
-
-                TextView date,weather,min,max;
-                ImageView icon;
-
-                date =(TextView) itemView.findViewById(R.id.list_item_date_textview);
-                weather = (TextView) itemView.findViewById(R.id.list_item_forecast_textview);
-                min = (TextView) itemView.findViewById(R.id.list_item_low_textview);
-                max = (TextView) itemView.findViewById(R.id.list_item_high_textview);
-                icon = (ImageView) itemView.findViewById(R.id.list_item_icon);
-
-                int weatherId = cursor.getInt(ForecastFragment.COL_WEATHER_ID);
-                icon.setImageResource(R.drawable.ic_launcher);
-                long dateId = cursor.getLong(ForecastFragment.COL_WEATHER_DATE);
-                date.setText(Utility.getDayName(mContext,dateId));
-                String weatherDesc = cursor.getString(ForecastFragment.COL_WEATHER_DESC);
-                weather.setText(weatherDesc);
-                boolean isMetric = Utility.isMetric(mContext);
-                double high = cursor.getDouble(ForecastFragment.COL_WEATHER_MAX_TEMP);
-                max.setText(Utility.formatTemperature(high, isMetric) + "/");
-                double low = cursor.getDouble(ForecastFragment.COL_WEATHER_MIN_TEMP);
-                min.setText(Utility.formatTemperature(low, isMetric));
-            }
-
-            @Override
-            public int getViewTypeCount() {
-                return VIEW_TYPE_COUNT;
-            }
-
-            @Override
-            public int getItemViewType(int position) {
-                Log.e("getItemViewType: ",""+position);
-                if(position == VIEW_TYPE_TODAY)
-                    return VIEW_TYPE_TODAY;
-                else
-                    return VIEW_TYPE_FUTURE_DAY;
-            }
-        };
+        mCursor = c;
     }
 
     // Create new views (invoked by the layout manager)
     @Override
     public WeatherAdapter.ViewHolder onCreateViewHolder(ViewGroup parent,
                                                    int viewType) {
-        // create a new view
-        View v = mCursorAdapter.newView(mContext, mCursorAdapter.getCursor(), parent);
+        Cursor cursor = mCursor;
+        int layoutId = -1;
+        if(viewType==VIEW_TYPE_TODAY)
+            layoutId = R.layout.list_item_forecast_today;
+        else if(viewType==VIEW_TYPE_FUTURE_DAY)
+            layoutId = R.layout.list_item_forecast;
+        View v = LayoutInflater.from(mContext).inflate(layoutId, parent, false);
         return new ViewHolder(v);
     }
 
     // Replace the contents of a view (invoked by the layout manager)
     @Override
     public void onBindViewHolder(final ViewHolder holder, final int position) {
-        mCursorAdapter.getCursor().moveToPosition(position);
-        mCursorAdapter.bindView(holder.itemView, mContext, mCursorAdapter.getCursor());
-        Cursor cursor = mCursorAdapter.getCursor();
+        Cursor cursor = mCursor;
         cursor.moveToPosition(position);
+        int weatherId = cursor.getInt(ForecastFragment.COL_WEATHER_CONDITION_ID);
+        //Log.e("weather Id",""+weatherId);
+        if(getItemViewType(cursor.getPosition())==VIEW_TYPE_TODAY)
+            holder.icon.setImageResource(Utility.getArtResourceForWeatherCondition(weatherId));
+        else
+            holder.icon.setImageResource(Utility.getIconResourceForWeatherCondition(weatherId));
+        long dateId = cursor.getLong(ForecastFragment.COL_WEATHER_DATE);
+        if(getItemViewType(cursor.getPosition())==VIEW_TYPE_TODAY)
+            holder.date.setText(Utility.getFormattedMonthDay(mContext,dateId));
+        else
+            holder.date.setText(Utility.getDayName(mContext,dateId));
+        String weatherDesc = cursor.getString(ForecastFragment.COL_WEATHER_DESC);
+        holder.weather.setText(weatherDesc);
+        boolean isMetric = Utility.isMetric(mContext);
+        double high = cursor.getDouble(ForecastFragment.COL_WEATHER_MAX_TEMP);
+
+        holder.max.setText(Utility.formatTemperature(mContext,high, isMetric));
+        double low = cursor.getDouble(ForecastFragment.COL_WEATHER_MIN_TEMP);
+        holder.min.setText(Utility.formatTemperature(mContext,low, isMetric));
 
         holder.itemView.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Cursor cursor = mCursorAdapter.getCursor();
+                Cursor cursor= mCursor;
                 cursor.moveToPosition(position);
                 if (!cursor.isClosed()) {
                     String locationSetting = Utility.getPreferredLocation(mContext);
-                    Intent intent = new Intent(mContext.getApplicationContext(), DetailActivity.class)
-                            .setData(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
+                    ((ForecastFragment.Callback) mContext)
+                            .onItemSelected(WeatherContract.WeatherEntry.buildWeatherLocationWithDate(
                                     locationSetting, cursor.getLong(ForecastFragment.COL_WEATHER_DATE)
                             ));
-                    mContext.startActivity(intent);
                 }
             }
         });
@@ -151,11 +117,27 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
     // Return the size of your dataset (invoked by the layout manager)
     @Override
     public int getItemCount() {
-        return mCursorAdapter.getCount();
+        if ( null == mCursor ) return 0;
+        return mCursor.getCount();
     }
 
     @Override
     public int getItemViewType(int position) {
-        return mCursorAdapter.getItemViewType(position);
+        if(position == VIEW_TYPE_TODAY && mTwoPane)
+            return VIEW_TYPE_TODAY;
+        else
+            return VIEW_TYPE_FUTURE_DAY;
+    }
+    public void swapCursor(Cursor cursor){
+        mCursor=cursor;
+        notifyDataSetChanged();
+    }
+
+    public void setmTwoPane(boolean isTwoPane){
+        mTwoPane=isTwoPane;
+    }
+
+    public Cursor getCursor(){
+        return mCursor;
     }
 }

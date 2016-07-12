@@ -1,6 +1,9 @@
 package com.example.ayush.sunshine.app;
 
 
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
@@ -24,11 +27,13 @@ import android.view.ViewGroup;
 import android.widget.Toast;
 
 import com.example.ayush.sunshine.app.data.WeatherContract;
+import com.example.ayush.sunshine.app.sync.SunshineSyncAdapter;
 
 import java.util.ArrayList;
 
 import adapter.Utility;
 import adapter.WeatherAdapter;
+
 /**
  * A simple {@link Fragment} subclass.
  */
@@ -90,7 +95,7 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         mRecyclerView.setHasFixedSize(true);
         mLayoutManager = new LinearLayoutManager(getActivity());
         mRecyclerView.setLayoutManager(mLayoutManager);
-        mAdapter = new WeatherAdapter(getActivity(), null, 0);
+        mAdapter = new WeatherAdapter(getActivity(), null);
         updateWeather();
         return rootView;
     }
@@ -117,25 +122,24 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         else if(id == R.id.action_settings)
             startActivity(new Intent(getActivity(),SettingsActivity.class));
         else if(id == R.id.action_map){
-            Uri geoLocation = Uri.parse("geo:0,0?").buildUpon().appendQueryParameter("q",
-                    postal).build();
-            Intent intent = new Intent(Intent.ACTION_VIEW);
-            intent.setData(geoLocation);
-            if(intent.resolveActivity(getActivity().getPackageManager())!=null)
-                startActivity(intent);
-            else
-                Log.e("Could not call ",postal);
+            openPreferredLocationInMap();
         }
         return super.onOptionsItemSelected(item);
     }
 
     public void updateWeather(){
-
-        SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(getActivity());
-        postal = preferences.getString(getString(R.string.pref_location_key)
-                ,getString(R.string.pref_location_default));
-        //Toast.makeText(getActivity(),LOG_TAG+" updatedWeather()",Toast.LENGTH_SHORT).show();
-        FetchWeatherTask fetchWeatherTask = new FetchWeatherTask(getContext());
+        SunshineSyncAdapter.syncImmediately(getActivity());
+//        Intent alarmIntent = new Intent(getActivity(), SunshineService.AlarmReceiver.class);
+//        alarmIntent.putExtra(SunshineService.LOCATION_QUERY_EXTRA, Utility.getPreferredLocation(getActivity()));
+//        alarmIntent.putExtra(SunshineService.UNIT_QUERY_EXTRA,Utility.isMetric(getActivity()));
+//
+//        //Wrap in a pending intent which only fires once.
+//        PendingIntent pi = PendingIntent.getBroadcast(getActivity(), 0,alarmIntent,PendingIntent.FLAG_ONE_SHOT);//getBroadcast(context, 0, i, 0);
+//
+//        AlarmManager am=(AlarmManager)getActivity().getSystemService(Context.ALARM_SERVICE);
+//
+//        //Set the AlarmManager to wake up the system.
+//        am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 5000, pi);
         mRecyclerView.setAdapter(mAdapter);
     }
 
@@ -171,12 +175,12 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
              @Override
      public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
-             mAdapter.mCursorAdapter.swapCursor(cursor);
+             mAdapter.swapCursor(cursor);
          }
 
              @Override
      public void onLoaderReset(Loader<Cursor> cursorLoader) {
-             mAdapter.mCursorAdapter.swapCursor(null);
+             mAdapter.swapCursor(null);
          }
 
     public void onLocationChanged(){
@@ -184,4 +188,40 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
         getLoaderManager().restartLoader(FORECAST_LOADER,null,this);
     }
 
+    public void setOnType(boolean viewType){
+        if(mAdapter!=null)
+            mAdapter.setmTwoPane(viewType);
+    }
+
+    public interface Callback {
+        /**
+         * DetailFragmentCallback for when an item has been selected.
+         */
+        public void onItemSelected(Uri dateUri);
+    }
+
+    private void openPreferredLocationInMap() {
+        // Using the URI scheme for showing a location found on a map.  This super-handy
+        // intent can is detailed in the "Common Intents" page of Android's developer site:
+        // http://developer.android.com/guide/components/intents-common.html#Maps
+        if ( null != mAdapter ) {
+            Cursor c = mAdapter.getCursor();
+            if ( null != c ) {
+                c.moveToPosition(0);
+                String posLat = c.getString(COL_COORD_LAT);
+                String posLong = c.getString(COL_COORD_LONG);
+                Uri geoLocation = Uri.parse("geo:" + posLat + "," + posLong);
+                Log.e(LOG_TAG,geoLocation.toString());
+                Intent intent = new Intent(Intent.ACTION_VIEW);
+                intent.setData(geoLocation);
+
+                if (intent.resolveActivity(getActivity().getPackageManager()) != null) {
+                    startActivity(intent);
+                } else {
+                    Log.d(LOG_TAG, "Couldn't call " + geoLocation.toString() + ", no receiving apps installed!");
+                }
+            }
+
+        }
+    }
 }
