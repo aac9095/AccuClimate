@@ -2,6 +2,7 @@ package com.example.ayush.sunshine.app.sync;
 
 import android.accounts.Account;
 import android.accounts.AccountManager;
+import android.annotation.SuppressLint;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.content.AbstractThreadedSyncAdapter;
@@ -14,11 +15,15 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SyncRequest;
 import android.content.SyncResult;
+import android.content.res.Resources;
 import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
+import android.support.annotation.IntDef;
 import android.support.v4.app.NotificationCompat;
 import android.support.v4.app.TaskStackBuilder;
 import android.text.format.DateFormat;
@@ -27,16 +32,20 @@ import android.util.Log;
 import android.widget.ShareActionProvider;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.ayush.sunshine.app.MainActivity;
 import com.example.ayush.sunshine.app.R;
 import com.example.ayush.sunshine.app.data.WeatherContract;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Vector;
+import java.util.concurrent.ExecutionException;
 
 import adapter.Utility;
 import retrofit.OpenWeather;
@@ -80,19 +89,42 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
         super(context, autoInitialize);
     }
 
+    @IntDef ({LOCATION_STATUS_OK,LOCATION_STATUS_SERVER_DOWN,LOCATION_STATUS_SERVER_INVALID,LOCATION_STATUS_UNKNOWN,LOCATION_STATUS_INVALID})
+    @Retention(RetentionPolicy.SOURCE)
+    public @interface LocationStatus{}
+    public static final int LOCATION_STATUS_OK = 0;
+    public static final int LOCATION_STATUS_SERVER_DOWN = 1;
+    public static final int LOCATION_STATUS_SERVER_INVALID = 2;
+    public static final int LOCATION_STATUS_UNKNOWN = 3;
+    public static final int LOCATION_STATUS_INVALID = 4;
+
+
+
     @Override
     public void onResponse(Call<OpenWeather> call, Response<OpenWeather> response) {
         int code = response.code();
-        if (code == 200) {
+        Log.e("Response Code",String.valueOf(code));
+        if (code == 200 && response.body().getCnt()>0) {
             OpenWeather openWeather = response.body();
             getWeatherDataFromRetrofit(openWeather,postal);
-        } else {
+            setLocationStatus(getContext(),LOCATION_STATUS_OK);
+        } else if(code == 400 || response.body().getCnt()==0){
+            setLocationStatus(getContext(),LOCATION_STATUS_SERVER_DOWN);
+            Toast.makeText(getContext(), "Did not work: " + String.valueOf(code), Toast.LENGTH_LONG).show();
+        }
+        else if(code == 404){
+            setLocationStatus(getContext(),LOCATION_STATUS_INVALID);
+            Toast.makeText(getContext(), "Did not work: " + String.valueOf(code), Toast.LENGTH_LONG).show();
+        }
+        else {
+            setLocationStatus(getContext(),LOCATION_STATUS_UNKNOWN);
             Toast.makeText(getContext(), "Did not work: " + String.valueOf(code), Toast.LENGTH_LONG).show();
         }
     }
     @Override
     public void onFailure(Call<OpenWeather> call, Throwable t) {
         Toast.makeText(getContext(), "Nope", Toast.LENGTH_LONG).show();
+        setLocationStatus(getContext(),LOCATION_STATUS_SERVER_INVALID);
         Log.e("Throwable ",t.toString());
     }
 
@@ -383,14 +415,15 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
     }
 
     private void notifyWeather() {
-        SharedPreferences pref = PreferenceManager.getDefaultSharedPreferences(getContext());
-        String displayNotificationsKey = getContext().getString(R.string.pref_enable_notifications_key);
-        boolean displayNotifications = pref.getBoolean(displayNotificationsKey,
-                Boolean.parseBoolean(getContext().getString(R.string.pref_enable_notifications_default)));
-        if (displayNotifications) {
-            Context context = getContext();
-            //checking the last update and notify if it' the first of the day
-            SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        Context context = getContext();
+        //checking the last update and notify if it' the first of the day
+        SharedPreferences prefs = PreferenceManager.getDefaultSharedPreferences(context);
+        String displayNotificationsKey = context.getString(R.string.pref_enable_notifications_key);
+        boolean displayNotifications = prefs.getBoolean(displayNotificationsKey,
+                Boolean.parseBoolean(context.getString(R.string.pref_enable_notifications_default)));
+
+        if ( displayNotifications ) {
+
             String lastNotificationKey = context.getString(R.string.pref_last_notification);
             long lastSync = prefs.getLong(lastNotificationKey, 0);
 
@@ -410,39 +443,61 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
                     String desc = cursor.getString(INDEX_SHORT_DESC);
 
                     int iconId = Utility.getIconResourceForWeatherCondition(weatherId);
+                    Resources resources = context.getResources();
+                    int artResourceId = Utility.getArtResourceForWeatherCondition(weatherId);
+                    String artUrl = Utility.getArtUrlForWeatherCondition(context, weatherId);
+
+                    // On Honeycomb and higher devices, we can retrieve the size of the large icon
+                    // Prior to that, we use a fixed size
+                    @SuppressLint("InlinedApi")
+                    int largeIconWidth = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB
+                            ? resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width)
+                            : resources.getDimensionPixelSize(R.dimen.notification_large_icon_default);
+                    @SuppressLint("InlinedApi")
+                    int largeIconHeight = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB
+                            ? resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_height)
+                            : resources.getDimensionPixelSize(R.dimen.notification_large_icon_default);
+
+                    // Retrieve the large icon
+                    Bitmap largeIcon;
+                    try {
+                        largeIcon = Glide.with(context)
+                                .load(artUrl)
+                                .asBitmap()
+                                .error(artResourceId)
+                                .fitCenter()
+                                .into(largeIconWidth, largeIconHeight).get();
+                    } catch (InterruptedException | ExecutionException | IllegalArgumentException e) {
+                        Log.e(LOG_TAG, "Error retrieving large icon from " + artUrl, e);
+                        largeIcon = BitmapFactory.decodeResource(resources, artResourceId);
+                    }
                     String title = context.getString(R.string.app_name);
 
                     // Define the text of the forecast.
                     String contentText = String.format(context.getString(R.string.format_notification),
                             desc,
-                            Utility.formatTemperature(context, high, isMetric),
-                            Utility.formatTemperature(context, low, isMetric));
+                            Utility.formatTemperature(context, high,Utility.isMetric(context)),
+                            Utility.formatTemperature(context, low,Utility.isMetric(context)));
 
-                    //build your notification here.
-
-
-                    //refreshing last sync
-                    SharedPreferences.Editor editor = prefs.edit();
-                    editor.putLong(lastNotificationKey, System.currentTimeMillis());
-                    editor.commit();
-
-
+                    // NotificationCompatBuilder is a very convenient way to build backward-compatible
+                    // notifications.  Just throw in some data.
                     NotificationCompat.Builder mBuilder =
                             new NotificationCompat.Builder(getContext())
+                                    .setColor(resources.getColor(R.color.primary_light))
                                     .setSmallIcon(iconId)
+                                    .setLargeIcon(largeIcon)
                                     .setContentTitle(title)
                                     .setContentText(contentText);
-                    // Creates an explicit intent for an Activity in your app
-                    Intent resultIntent = new Intent(getContext(), MainActivity.class);
+
+                    // Make something interesting happen when the user clicks on the notification.
+                    // In this case, opening the app is sufficient.
+                    Intent resultIntent = new Intent(context, MainActivity.class);
 
                     // The stack builder object will contain an artificial back stack for the
                     // started Activity.
                     // This ensures that navigating backward from the Activity leads out of
                     // your application to the Home screen.
-                    TaskStackBuilder stackBuilder = TaskStackBuilder.create(getContext());
-                    // Adds the back stack for the Intent (but not the Intent itself)
-                    stackBuilder.addParentStack(MainActivity.class);
-                    // Adds the Intent that starts the Activity to the top of the stack
+                    TaskStackBuilder stackBuilder = TaskStackBuilder.create(context);
                     stackBuilder.addNextIntent(resultIntent);
                     PendingIntent resultPendingIntent =
                             stackBuilder.getPendingIntent(
@@ -450,13 +505,25 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements 
                                     PendingIntent.FLAG_UPDATE_CURRENT
                             );
                     mBuilder.setContentIntent(resultPendingIntent);
+
                     NotificationManager mNotificationManager =
                             (NotificationManager) getContext().getSystemService(Context.NOTIFICATION_SERVICE);
-                    // mId allows you to update the notification later on.
+                    // WEATHER_NOTIFICATION_ID allows you to update the notification later on.
                     mNotificationManager.notify(WEATHER_NOTIFICATION_ID, mBuilder.build());
+
+                    //refreshing last sync
+                    SharedPreferences.Editor editor = prefs.edit();
+                    editor.putLong(lastNotificationKey, System.currentTimeMillis());
+                    editor.commit();
                 }
+                cursor.close();
             }
         }
     }
-
+    static private void setLocationStatus(Context c, @LocationStatus int locationStatus){
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(c);
+        SharedPreferences.Editor spe = sp.edit();
+        spe.putInt(c.getString(R.string.pref_location_status_key), locationStatus);
+        spe.commit();
+    }
 }

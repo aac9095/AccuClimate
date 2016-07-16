@@ -14,6 +14,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.bumptech.glide.Glide;
 import com.example.ayush.sunshine.app.DetailActivity;
 import com.example.ayush.sunshine.app.ForecastFragment;
 import com.example.ayush.sunshine.app.R;
@@ -80,10 +81,19 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
         cursor.moveToPosition(position);
         int weatherId = cursor.getInt(ForecastFragment.COL_WEATHER_CONDITION_ID);
         //Log.e("weather Id",""+weatherId);
+        int forecastId;
         if(getItemViewType(cursor.getPosition())==VIEW_TYPE_TODAY)
-            holder.icon.setImageResource(Utility.getArtResourceForWeatherCondition(weatherId));
+            forecastId = Utility.getArtResourceForWeatherCondition(weatherId);
         else
-            holder.icon.setImageResource(Utility.getIconResourceForWeatherCondition(weatherId));
+            forecastId = Utility.getIconResourceForWeatherCondition(weatherId);
+
+       //Log.e("image URL",mContext.getString(R.string.weather_icon_url)+Utility.getStringForWeatherCondition(mContext,weatherId));
+
+        Glide.with(mContext)
+                .load(Utility.getArtUrlForWeatherCondition(mContext, weatherId))
+                .error(forecastId)
+                .into(holder.icon);
+
         long dateId = cursor.getLong(ForecastFragment.COL_WEATHER_DATE);
         if(getItemViewType(cursor.getPosition())==VIEW_TYPE_TODAY)
             holder.date.setText(Utility.getFormattedMonthDay(mContext,dateId));
@@ -110,6 +120,7 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
                                     locationSetting, cursor.getLong(ForecastFragment.COL_WEATHER_DATE)
                             ));
                 }
+                ForecastFragment.mPosition = position;
             }
         });
     }
@@ -130,6 +141,7 @@ public class WeatherAdapter extends RecyclerView.Adapter<WeatherAdapter.ViewHold
     }
     public void swapCursor(Cursor cursor){
         mCursor=cursor;
+        Log.e(WeatherAdapter.class.getSimpleName(),"notifying dataset changes");
         notifyDataSetChanged();
     }
 

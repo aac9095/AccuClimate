@@ -21,6 +21,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.TextView;
 
+import com.bumptech.glide.Glide;
 import com.example.ayush.sunshine.app.data.WeatherContract;
 
 import adapter.Utility;
@@ -63,7 +64,7 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
          public static final int COL_WEATHER_CONDITION_ID = 9;
 
     private String weather;
-    private ShareActionProvider mShareActionProvider;
+    public ShareActionProvider mShareActionProvider;
     private String mForecast;
 
     private ImageView mIconView;
@@ -117,16 +118,6 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
         }
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        int id = item.getItemId();
-
-        //noinspection SimplifiableIfStatement
-        if (id == R.id.action_settings) {
-            startActivity(new Intent(getActivity(),SettingsActivity.class));
-        }
-        return super.onOptionsItemSelected(item);
-    }
 
     public Intent createShareForecastIntent(){
         Intent mShareIntent = new Intent(Intent.ACTION_SEND);
@@ -155,55 +146,57 @@ public class DetailFragment extends Fragment implements LoaderManager.LoaderCall
     @Override
     public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor data) {
         if (data != null && data.moveToFirst()) {
-                         // Read weather condition ID from cursor
-                                 int weatherId = data.getInt(COL_WEATHER_CONDITION_ID);
-                         // Use placeholder Image
-                                 mIconView.setImageResource(Utility.getArtResourceForWeatherCondition(weatherId));
+            // Read weather condition ID from cursor
+            int weatherId = data.getInt(COL_WEATHER_CONDITION_ID);
+            // Use placeholder Image
+            Glide.with(getContext())
+                    .load(Utility.getArtUrlForWeatherCondition(getContext(), weatherId))
+                    .into(mIconView);
 
-                                 // Read date from cursor and update views for day of week and date
-                                         long date = data.getLong(COL_WEATHER_DATE);
-                         String friendlyDateText = Utility.getDayName(getActivity(), date);
-                         String dateText = Utility.getFormattedMonthDay(getActivity(), date);
-                         mFriendlyDateView.setText(friendlyDateText);
-                         mDateView.setText(dateText);
+            // Read date from cursor and update views for day of week and date
+            long date = data.getLong(COL_WEATHER_DATE);
+            String friendlyDateText = Utility.getDayName(getActivity(), date);
+            String dateText = Utility.getFormattedMonthDay(getActivity(), date);
+            mFriendlyDateView.setText(friendlyDateText);
+            mDateView.setText(dateText);
 
-                                 // Read description from cursor and update view
-                                         String description = data.getString(COL_WEATHER_DESC);
-                         mDescriptionView.setText(description);
+            // Read description from cursor and update view
+            String description = data.getString(COL_WEATHER_DESC);
+            mDescriptionView.setText(description);
 
-                                 // Read high temperature from cursor and update view
-                                         boolean isMetric = Utility.isMetric(getActivity());
+            // Read high temperature from cursor and update view
+            boolean isMetric = Utility.isMetric(getActivity());
 
-                                 double high = data.getDouble(COL_WEATHER_MAX_TEMP);
-                         String highString = Utility.formatTemperature(getActivity(), high, isMetric);
-                         mHighTempView.setText(highString);
+            double high = data.getDouble(COL_WEATHER_MAX_TEMP);
+            String highString = Utility.formatTemperature(getActivity(), high, isMetric);
+            mHighTempView.setText(highString);
 
-                                 // Read low temperature from cursor and update view
-                                         double low = data.getDouble(COL_WEATHER_MIN_TEMP);
-                         String lowString = Utility.formatTemperature(getActivity(), low, isMetric);
-                         mLowTempView.setText(lowString);
+            // Read low temperature from cursor and update view
+            double low = data.getDouble(COL_WEATHER_MIN_TEMP);
+            String lowString = Utility.formatTemperature(getActivity(), low, isMetric);
+            mLowTempView.setText(lowString);
 
-                                 // Read humidity from cursor and update view
-                                         float humidity = data.getFloat(COL_WEATHER_HUMIDITY);
-                         mHumidityView.setText(getActivity().getString(R.string.format_humidity, humidity));
+            // Read humidity from cursor and update view
+            float humidity = data.getFloat(COL_WEATHER_HUMIDITY);
+            mHumidityView.setText(getActivity().getString(R.string.format_humidity, humidity));
 
-                                 // Read wind speed and direction from cursor and update view
-                                         float windSpeedStr = data.getFloat(COL_WEATHER_WIND_SPEED);
-                         float windDirStr = data.getFloat(COL_WEATHER_DEGREES);
-                         mWindView.setText(Utility.getFormattedWind(getActivity(), windSpeedStr, windDirStr));
+            // Read wind speed and direction from cursor and update view
+            float windSpeedStr = data.getFloat(COL_WEATHER_WIND_SPEED);
+            float windDirStr = data.getFloat(COL_WEATHER_DEGREES);
+            mWindView.setText(Utility.getFormattedWind(getActivity(), windSpeedStr, windDirStr));
 
-                                 // Read pressure from cursor and update view
-                                         float pressure = data.getFloat(COL_WEATHER_PRESSURE);
-                         mPressureView.setText(getActivity().getString(R.string.format_pressure, pressure));
+            // Read pressure from cursor and update view
+            float pressure = data.getFloat(COL_WEATHER_PRESSURE);
+            mPressureView.setText(getActivity().getString(R.string.format_pressure, pressure));
 
-                                 // We still need this for the share intent
-                                         mForecast = String.format("%s - %s - %s/%s", dateText, description, high, low);
+            // We still need this for the share intent
+            mForecast = String.format("%s - %s - %s/%s", dateText, description, high, low);
 
-                                 // If onCreateOptionsMenu has already happened, we need to update the share intent now.
-                                         if (mShareActionProvider != null) {
-                                 mShareActionProvider.setShareIntent(createShareForecastIntent());
-                             }
-                     }
+            // If onCreateOptionsMenu has already happened, we need to update the share intent now.
+            if (mShareActionProvider != null) {
+                mShareActionProvider.setShareIntent(createShareForecastIntent());
+            }
+        }
     }
 
     @Override

@@ -7,6 +7,8 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.database.Cursor;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.net.Uri;
 import android.os.Bundle;
 import android.preference.PreferenceManager;
@@ -24,6 +26,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ListView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.example.ayush.sunshine.app.data.WeatherContract;
@@ -37,7 +41,7 @@ import adapter.WeatherAdapter;
 /**
  * A simple {@link Fragment} subclass.
  */
-public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>{
+public class ForecastFragment extends Fragment implements LoaderManager.LoaderCallbacks<Cursor>,SharedPreferences.OnSharedPreferenceChangeListener{
 
     private static final int FORECAST_LOADER = 0;
     private final String LOG_TAG = ForecastFragment.class.getSimpleName();
@@ -45,8 +49,10 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public ArrayList<String> arrayList;
     private String postal;
     private RecyclerView mRecyclerView;
+    private TextView emptyView;
     private LinearLayoutManager mLayoutManager;
     private WeatherAdapter mAdapter;
+    public static int mPosition = RecyclerView.NO_POSITION;
     private static final String[] FORECAST_COLUMNS = {
             // In this case the id needs to be fully qualified with a table name, since
             // the content provider joins the location & weather tables in the background
@@ -76,6 +82,11 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     static public final int COL_WEATHER_CONDITION_ID = 6;
     static public final int COL_COORD_LAT = 7;
     static public final int COL_COORD_LONG = 8;
+
+
+
+    private static final String SELECTED_KEY = "selected_position";
+
     public ForecastFragment() {
     }
 
@@ -90,14 +101,31 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                              Bundle savedInstanceState) {
 
         rootView = inflater.inflate(R.layout.fragment_main, container, false);
+        emptyView = (TextView) rootView.findViewById(R.id.empty_view);
         arrayList = new ArrayList<String>();
         mRecyclerView = (RecyclerView) rootView.findViewById(R.id.recycler_view_forecast);
         mRecyclerView.setHasFixedSize(true);
         mLayoutManager = new LinearLayoutManager(getActivity());
         mRecyclerView.setLayoutManager(mLayoutManager);
         mAdapter = new WeatherAdapter(getActivity(), null);
+        if (savedInstanceState != null && savedInstanceState.containsKey(SELECTED_KEY)) {
+            // The listview probably hasn't even been populated yet.  Actually perform the
+            // swapout in onLoadFinished.
+            mPosition = savedInstanceState.getInt(SELECTED_KEY);
+        }
         updateWeather();
         return rootView;
+    }
+
+    @Override
+    public void onSaveInstanceState(Bundle outState) {
+        // When tablets rotate, the currently selected list item needs to be saved.
+        // When no item is selected, mPosition will be set to Listview.INVALID_POSITION,
+        // so check for that before storing.
+        if (mPosition != RecyclerView.NO_POSITION) {
+            outState.putInt(SELECTED_KEY, mPosition);
+        }
+        super.onSaveInstanceState(outState);
     }
 
     @Override
@@ -119,8 +147,6 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
             Toast.makeText(getActivity(), "Refresh", Toast.LENGTH_SHORT).show();
             updateWeather();
         }
-        else if(id == R.id.action_settings)
-            startActivity(new Intent(getActivity(),SettingsActivity.class));
         else if(id == R.id.action_map){
             openPreferredLocationInMap();
         }
@@ -129,31 +155,22 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
 
     public void updateWeather(){
         SunshineSyncAdapter.syncImmediately(getActivity());
-//        Intent alarmIntent = new Intent(getActivity(), SunshineService.AlarmReceiver.class);
-//        alarmIntent.putExtra(SunshineService.LOCATION_QUERY_EXTRA, Utility.getPreferredLocation(getActivity()));
-//        alarmIntent.putExtra(SunshineService.UNIT_QUERY_EXTRA,Utility.isMetric(getActivity()));
-//
-//        //Wrap in a pending intent which only fires once.
-//        PendingIntent pi = PendingIntent.getBroadcast(getActivity(), 0,alarmIntent,PendingIntent.FLAG_ONE_SHOT);//getBroadcast(context, 0, i, 0);
-//
-//        AlarmManager am=(AlarmManager)getActivity().getSystemService(Context.ALARM_SERVICE);
-//
-//        //Set the AlarmManager to wake up the system.
-//        am.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + 5000, pi);
         mRecyclerView.setAdapter(mAdapter);
     }
-
-
-//    @Override
-//    public void onStart() {
-//        super.onStart();
-//        updateWeather();
-//    }
 
     @Override
     public void onResume() {
         super.onResume();
-        updateWeather();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        sp.registerOnSharedPreferenceChangeListener(this);
+
+    }
+
+    @Override
+    public void onPause() {
+        super.onPause();
+        SharedPreferences sp = PreferenceManager.getDefaultSharedPreferences(getContext());
+        sp.unregisterOnSharedPreferenceChangeListener(this);
     }
 
     @Override
@@ -173,12 +190,23 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                              sortOrder);
          }
 
-             @Override
+    @Override
      public void onLoadFinished(Loader<Cursor> cursorLoader, Cursor cursor) {
-             mAdapter.swapCursor(cursor);
-         }
+        if(cursor.getCount()>0){
+            emptyView.setVisibility(View.GONE);
+            mAdapter.swapCursor(cursor);
+            if (mPosition != RecyclerView.NO_POSITION) {
+                // If we don't need to restart the loader, and there's a desired position to restore
+                // to, do so now.
+                mRecyclerView.smoothScrollToPosition(mPosition);
+            }
+        }
+        else{
+            updateEmptyView();
+        }
+    }
 
-             @Override
+    @Override
      public void onLoaderReset(Loader<Cursor> cursorLoader) {
              mAdapter.swapCursor(null);
          }
@@ -191,6 +219,13 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
     public void setOnType(boolean viewType){
         if(mAdapter!=null)
             mAdapter.setmTwoPane(viewType);
+    }
+
+    @Override
+    public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
+        if(key.equals(getString(R.string.pref_location_status_key))){
+            updateEmptyView();
+        }
     }
 
     public interface Callback {
@@ -222,6 +257,24 @@ public class ForecastFragment extends Fragment implements LoaderManager.LoaderCa
                 }
             }
 
+        }
+    }
+    private void updateEmptyView(){
+        @SunshineSyncAdapter.LocationStatus int location = Utility.getLocationStatus(getContext());
+        switch (location){
+            case SunshineSyncAdapter.LOCATION_STATUS_SERVER_DOWN :
+                emptyView.setText(getString(R.string.empty_forecast_list_server_down));
+                break;
+            case SunshineSyncAdapter.LOCATION_STATUS_SERVER_INVALID :
+                emptyView.setText(getString(R.string.empty_forecast_list_server_error));
+                break;
+            case SunshineSyncAdapter.LOCATION_STATUS_INVALID:
+                emptyView.setText(getString(R.string.empty_forecast_list_location_invalid));
+                break;
+            default:
+                if(!Utility.isNetworkAvailable(getContext())){
+                    emptyView.setText(getString(R.string.no_connection));
+                }
         }
     }
 }

@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
-<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:custom="http://schemas.android.com/apk/res/com.example.ayush.sunshine.app">
 
-    <EditTextPreference
+    <com.example.ayush.sunshine.app.LocationEditTextPreference
             android:title="@string/pref_location_label"
             android:key="@string/pref_location_key"
             android:defaultValue="@string/pref_location_default"
             android:inputType="text"
-            android:singleLine="true" />
+            android:singleLine="true"
+            custom:min_len="3"/>
 
     <ListPreference
         android:title="@string/pref_units_label"
@@ -21,5 +24,12 @@
         android:summaryOff="@string/pref_enable_notifications_false"
         android:summaryOn="@string/pref_enable_notifications_true"
         android:defaultValue="@string/pref_enable_notifications_default" />
+
+    <ListPreference
+        android:title="@string/pref_icon_label"
+        android:key="@string/pref_icon_key"
+        android:defaultValue="@string/pref_icon_default"
+        android:entryValues="@array/pref_icon_values"
+        android:entries="@array/pref_icon_options" />
 
 </PreferenceScreen>

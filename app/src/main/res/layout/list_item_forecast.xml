@@ -2,67 +2,72 @@
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="80dp"
-    android:layout_margin="8dp">
+    android:background="@drawable/touch_selector">
 
     <ImageView
         android:id="@+id/list_item_icon"
-        android:layout_width="80dp"
+        android:layout_width="60dp"
         android:layout_height="match_parent"
-        android:gravity="center_vertical"/>
+        android:gravity="center_vertical"
+        android:adjustViewBounds="true"/>
 
 
         <TextView
             android:layout_marginTop="12dp"
             android:layout_toLeftOf="@+id/list_item_high_textview"
+            android:layout_toStartOf="@+id/list_item_high_textview"
             android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
             android:layout_toRightOf="@+id/list_item_icon"
+            android:layout_toEndOf="@+id/list_item_icon"
             android:id="@+id/list_item_date_textview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:gravity="center_vertical"
             android:textSize="20sp"
-            android:textStyle="bold"
-            android:text="Today"/>
+            android:textStyle="bold"/>
         <TextView
-
+            android:layout_toStartOf="@+id/list_item_high_textview"
             android:layout_toLeftOf="@+id/list_item_high_textview"
             android:layout_marginLeft="16dp"
+            android:layout_marginStart="16dp"
             android:layout_marginTop="8dp"
             android:layout_toRightOf="@+id/list_item_icon"
+            android:layout_toEndOf="@+id/list_item_icon"
             android:layout_below="@+id/list_item_date_textview"
             android:id="@+id/list_item_forecast_textview"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:textSize="20sp"
-            android:gravity="center_vertical"
-            android:text="Sunny"/>
+            android:gravity="center_vertical"/>
 
     <TextView
         android:layout_toLeftOf="@+id/list_item_temp"
+        android:layout_toStartOf="@+id/list_item_temp"
         android:id="@+id/list_item_high_textview"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:textSize="24sp"
         android:textStyle="bold"
-        android:gravity="right|center_vertical"
-        android:text="88"/>
+        android:gravity="center_vertical|end" />
 
     <TextView
         android:layout_toLeftOf="@+id/list_item_low_textview"
+        android:layout_toStartOf="@+id/list_item_low_textview"
         android:id="@+id/list_item_temp"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:textSize="32sp"
-        android:gravity="right|center_vertical"
+        android:gravity="end|center_vertical"
         android:text="/"/>
 
     <TextView
         android:layout_alignParentRight="true"
+        android:layout_alignParentEnd="true"
         android:id="@+id/list_item_low_textview"
         android:layout_width="wrap_content"
         android:layout_height="match_parent"
         android:gravity="center_vertical"
-        android:textSize="24sp"
-        android:text="63"/>
+        android:textSize="24sp" />
 
 </RelativeLayout>
