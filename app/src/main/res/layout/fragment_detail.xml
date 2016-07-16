@@ -42,10 +42,10 @@
         android:background="@color/detail_accent_pane_background"
         android:paddingBottom="@dimen/abc_list_item_padding_horizontal_material"
         android:paddingTop="@dimen/abc_list_item_padding_horizontal_material"
-        android:paddingLeft="32dp"
-        android:paddingStart="32dp"
-        android:paddingRight="32dp"
-        android:paddingEnd="32dp">
+        android:paddingLeft="@dimen/forecast_detail_horizontal_padding"
+        android:paddingStart="@dimen/forecast_detail_horizontal_padding"
+        android:paddingRight="@dimen/forecast_detail_horizontal_padding"
+        android:paddingEnd="@dimen/forecast_detail_horizontal_padding">
 
         <TextView
             android:id="@+id/detail_humidity_label_textview"
